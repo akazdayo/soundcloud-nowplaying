@@ -1,0 +1,176 @@
+openapi: 3.1.0
+info:
+  title: SoundCloud Internal API (Unofficial)
+  version: 0.1.0
+  description: |
+    Unofficial, reverse-engineered subset of SoundCloud's api-v2 used by the web client.
+    This API is undocumented and may change without notice.
+servers:
+  - url: https://api-v2.soundcloud.com
+paths:
+  /me/play-history/tracks:
+    get:
+      operationId: getPlayHistoryTracks
+      summary: Get the authenticated user's listening-history tracks
+      parameters:
+        - $ref: '#/components/parameters/ClientId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/LinkedPartitioning'
+        - $ref: '#/components/parameters/AppVersion'
+        - $ref: '#/components/parameters/AppLocale'
+        - $ref: '#/components/parameters/OAuthToken'
+      responses:
+        '200':
+          description: Play-history track collection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayHistoryResponse'
+        '401':
+          description: Authentication required or invalid
+        '403':
+          description: Forbidden
+  /me/play-history/contexts:
+    get:
+      operationId: getPlayHistoryContexts
+      summary: Get listening-history contexts
+      parameters:
+        - $ref: '#/components/parameters/ClientId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/LinkedPartitioning'
+        - $ref: '#/components/parameters/AppVersion'
+        - $ref: '#/components/parameters/AppLocale'
+        - $ref: '#/components/parameters/OAuthToken'
+      responses:
+        '200':
+          description: Play-history context collection
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /me/play-history:
+    post:
+      operationId: addPlayHistory
+      summary: Add an item to play history
+      description: Request body is intentionally unspecified until captured from the current web client.
+      parameters:
+        - $ref: '#/components/parameters/ClientId'
+        - $ref: '#/components/parameters/AppVersion'
+        - $ref: '#/components/parameters/AppLocale'
+        - $ref: '#/components/parameters/OAuthToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Accepted
+        '201':
+          description: Created
+        '204':
+          description: No content
+    delete:
+      operationId: clearPlayHistory
+      summary: Clear play history
+      parameters:
+        - $ref: '#/components/parameters/ClientId'
+        - $ref: '#/components/parameters/AppVersion'
+        - $ref: '#/components/parameters/AppLocale'
+        - $ref: '#/components/parameters/OAuthToken'
+      responses:
+        '200':
+          description: Cleared
+        '204':
+          description: Cleared
+components:
+  parameters:
+    ClientId:
+      name: client_id
+      in: query
+      required: true
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 25
+    Offset:
+      name: offset
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    LinkedPartitioning:
+      name: linked_partitioning
+      in: query
+      required: false
+      schema:
+        type: boolean
+        default: true
+    AppVersion:
+      name: app_version
+      in: query
+      required: false
+      schema:
+        type: string
+    AppLocale:
+      name: app_locale
+      in: query
+      required: false
+      schema:
+        type: string
+        default: en
+    OAuthToken:
+      name: oauth_token
+      in: query
+      required: false
+      description: Historical web-client authentication parameter; current authentication behavior should be verified against live network traffic.
+      schema:
+        type: string
+  schemas:
+    PlayHistoryResponse:
+      type: object
+      properties:
+        collection:
+          type: array
+          items:
+            $ref: '#/components/schemas/Track'
+        next_href:
+          type: [string, 'null']
+      additionalProperties: true
+    Track:
+      type: object
+      description: Partial track schema. api-v2 exposes additional fields depending on representation and account state.
+      properties:
+        id:
+          type: integer
+        urn:
+          type: string
+        kind:
+          type: string
+        title:
+          type: string
+        duration:
+          type: integer
+        permalink_url:
+          type: string
+          format: uri
+        artwork_url:
+          type: [string, 'null']
+        user:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
