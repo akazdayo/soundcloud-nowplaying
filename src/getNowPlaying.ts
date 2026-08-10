@@ -1,12 +1,13 @@
-import { getHistories } from "./soundcloud.ts";
+import { getHistories, getTrack } from "./soundcloud.ts";
 import type { HistoriesResponse } from "./soundcloud.ts";
 
-export const getNewTracks = (data: HistoriesResponse, lastPlayedAt: number) => {
+export const getNewTracks = async (data: HistoriesResponse, lastPlayedAt: number) => {
   const newTracks = [];
   for (const [i, item] of (data.collection ?? []).entries()) {
     const playedAt = item.played_at;
     if (playedAt > lastPlayedAt) {
-      console.log(`${i} New track!: ${item.track.id}`);
+      const trackMeta = await getTrack(item.track.id!);
+      console.log(`${i} New track!: ${trackMeta.title}`);
       newTracks.push(item.track.id);
     } else {
       break;
@@ -21,12 +22,12 @@ while (true) {
   const newestPlayedAt = history.collection[0]?.played_at;
 
   if (newestPlayedAt !== undefined && newestPlayedAt !== lastPlayedAt) {
-    const newTracks = getNewTracks(history, lastPlayedAt);
+    await getNewTracks(history, lastPlayedAt);
     lastPlayedAt = newestPlayedAt;
   }
 
   const second = 1000;
   await new Promise((resolve) => {
-    setTimeout(resolve, 60 * second);
+    setTimeout(resolve, 10 * second);
   });
 }

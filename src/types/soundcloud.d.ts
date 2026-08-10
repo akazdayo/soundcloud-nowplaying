@@ -4,6 +4,32 @@
  */
 
 export interface paths {
+    "/tracks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get track metadata by track IDs
+         * @description Fetch one or more tracks by numeric track ID.
+         *
+         *     The SoundCloud web client sends the IDs as a comma-separated
+         *     `ids` query parameter. A single track is also requested through
+         *     this endpoint, for example `ids=2009643255`.
+         *
+         *     The response is always an array of Track objects.
+         */
+        get: operations["getTracks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/play-history/tracks": {
         parameters: {
             query?: never;
@@ -49,7 +75,8 @@ export interface paths {
         put?: never;
         /**
          * Add an item to play history
-         * @description Request body is intentionally unspecified until captured from the current web client.
+         * @description Request body is intentionally unspecified until captured
+         *     from the current SoundCloud web client.
          */
         post: operations["addPlayHistory"];
         /** Clear play history */
@@ -82,32 +109,199 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Partial track schema. api-v2 exposes additional fields depending on representation and account state. */
+        /**
+         * @description Track representation returned by SoundCloud api-v2.
+         *     Fields may vary depending on account state, availability,
+         *     monetization, region, and endpoint representation.
+         */
         Track: {
-            id?: number;
-            urn?: string;
-            kind?: string;
-            title?: string;
+            artwork_url?: string | null;
+            caption?: string | null;
+            commentable?: boolean;
+            comment_count?: number;
+            /** Format: date-time */
+            created_at?: string;
+            description?: string | null;
+            downloadable?: boolean;
+            download_count?: number;
+            /** @description Track duration in milliseconds. */
             duration?: number;
+            /** @description Full track duration in milliseconds. */
+            full_duration?: number;
+            embeddable_by?: string;
+            genre?: string | null;
+            has_downloads_left?: boolean;
+            /** Format: int64 */
+            id?: number;
+            kind?: string;
+            label_name?: string | null;
+            /** Format: date-time */
+            last_modified?: string;
+            license?: string;
+            likes_count?: number;
+            permalink?: string;
             /** Format: uri */
             permalink_url?: string;
-            artwork_url?: string | null;
-            user?: {
+            playback_count?: number;
+            public?: boolean;
+            publisher_metadata?: components["schemas"]["PublisherMetadata"] | null;
+            purchase_title?: string | null;
+            purchase_url?: string | null;
+            /** Format: date-time */
+            release_date?: string | null;
+            reposts_count?: number;
+            secret_token?: string | null;
+            sharing?: string;
+            state?: string;
+            streamable?: boolean;
+            tag_list?: string;
+            title?: string;
+            /** Format: uri */
+            uri?: string;
+            /** @example soundcloud:tracks:2009643255 */
+            urn?: string;
+            /** Format: int64 */
+            user_id?: number;
+            visuals?: {
                 [key: string]: unknown;
-            };
+            } | null;
+            /** Format: uri */
+            waveform_url?: string;
+            /** Format: date-time */
+            display_date?: string | null;
+            media?: components["schemas"]["Media"];
+            station_urn?: string | null;
+            station_permalink?: string | null;
+            /** @description Authorization token used when requesting media streams. */
+            track_authorization?: string | null;
+            monetization_model?: string | null;
+            policy?: string | null;
+            user?: components["schemas"]["User"];
+        } & {
+            [key: string]: unknown;
+        };
+        PublisherMetadata: {
+            /** Format: int64 */
+            id?: number;
+            urn?: string;
+            artist?: string | null;
+            album_title?: string | null;
+            contains_music?: boolean | null;
+            explicit?: boolean | null;
+            isrc?: string | null;
+            publisher?: string | null;
+            release_title?: string | null;
+            writer_composer?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        Media: {
+            transcodings?: components["schemas"]["Transcoding"][];
+        } & {
+            [key: string]: unknown;
+        };
+        Transcoding: {
+            /** Format: uri */
+            url?: string;
+            preset?: string;
+            /** @description Duration in milliseconds. */
+            duration?: number;
+            snipped?: boolean;
+            format?: components["schemas"]["TranscodingFormat"];
+            /**
+             * @example sq
+             * @example lq
+             */
+            quality?: string;
+            is_legacy_transcoding?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        TranscodingFormat: {
+            /**
+             * @example hls
+             * @example progressive
+             */
+            protocol?: string;
+            /**
+             * @example audio/mpeg
+             * @example audio/mpegurl
+             * @example audio/mp4; codecs="mp4a.40.2"
+             */
+            mime_type?: string;
+        } & {
+            [key: string]: unknown;
+        };
+        User: {
+            avatar_url?: string | null;
+            first_name?: string;
+            followers_count?: number;
+            full_name?: string;
+            /** Format: int64 */
+            id?: number;
+            kind?: string;
+            /** Format: date-time */
+            last_modified?: string;
+            last_name?: string;
+            permalink?: string;
+            /** Format: uri */
+            permalink_url?: string;
+            /** Format: uri */
+            uri?: string;
+            urn?: string;
+            username?: string;
+            verified?: boolean;
+            city?: string | null;
+            country_code?: string | null;
+            badges?: components["schemas"]["UserBadges"];
+            station_urn?: string | null;
+            station_permalink?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        UserBadges: {
+            pro?: boolean;
+            creator_mid_tier?: boolean;
+            pro_unlimited?: boolean;
+            verified?: boolean;
         } & {
             [key: string]: unknown;
         };
     };
     responses: never;
     parameters: {
+        /**
+         * @description Comma-separated numeric SoundCloud track IDs.
+         *
+         *     Examples:
+         *     - `337321766`
+         *     - `2165585610,336219436,337321766`
+         */
+        TrackIds: string;
         ClientId: string;
         Limit: number;
         Offset: number;
         LinkedPartitioning: boolean;
+        /** @description SoundCloud web-client application version. */
         AppVersion: string;
         AppLocale: string;
-        /** @description Historical web-client authentication parameter; current authentication behavior should be verified against live network traffic. */
+        /**
+         * @description Authentication header used by the SoundCloud web client.
+         *
+         *     Example format:
+         *     `OAuth <token>`
+         */
+        Authorization: string;
+        /**
+         * @description DataDome client identifier sent by the SoundCloud web client.
+         *     This appears to be related to SoundCloud's anti-abuse system
+         *     and may not be required for all requests.
+         */
+        DataDomeClientId: string;
+        /**
+         * @description Historical web-client authentication parameter.
+         *     Current web-client traffic primarily uses the Authorization header.
+         */
         OAuthToken: string;
     };
     requestBodies: never;
@@ -116,6 +310,74 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getTracks: {
+        parameters: {
+            query: {
+                /**
+                 * @description Comma-separated numeric SoundCloud track IDs.
+                 *
+                 *     Examples:
+                 *     - `337321766`
+                 *     - `2165585610,336219436,337321766`
+                 */
+                ids: components["parameters"]["TrackIds"];
+                client_id: components["parameters"]["ClientId"];
+                /** @description SoundCloud web-client application version. */
+                app_version?: components["parameters"]["AppVersion"];
+                app_locale?: components["parameters"]["AppLocale"];
+            };
+            header?: {
+                /**
+                 * @description Authentication header used by the SoundCloud web client.
+                 *
+                 *     Example format:
+                 *     `OAuth <token>`
+                 */
+                Authorization?: components["parameters"]["Authorization"];
+                /**
+                 * @description DataDome client identifier sent by the SoundCloud web client.
+                 *     This appears to be related to SoundCloud's anti-abuse system
+                 *     and may not be required for all requests.
+                 */
+                "x-datadome-clientid"?: components["parameters"]["DataDomeClientId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Track collection */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Track"][];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required or invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     getPlayHistoryTracks: {
         parameters: {
             query: {
@@ -123,12 +385,30 @@ export interface operations {
                 limit?: components["parameters"]["Limit"];
                 offset?: components["parameters"]["Offset"];
                 linked_partitioning?: components["parameters"]["LinkedPartitioning"];
+                /** @description SoundCloud web-client application version. */
                 app_version?: components["parameters"]["AppVersion"];
                 app_locale?: components["parameters"]["AppLocale"];
-                /** @description Historical web-client authentication parameter; current authentication behavior should be verified against live network traffic. */
+                /**
+                 * @description Historical web-client authentication parameter.
+                 *     Current web-client traffic primarily uses the Authorization header.
+                 */
                 oauth_token?: components["parameters"]["OAuthToken"];
             };
-            header?: never;
+            header?: {
+                /**
+                 * @description Authentication header used by the SoundCloud web client.
+                 *
+                 *     Example format:
+                 *     `OAuth <token>`
+                 */
+                Authorization?: components["parameters"]["Authorization"];
+                /**
+                 * @description DataDome client identifier sent by the SoundCloud web client.
+                 *     This appears to be related to SoundCloud's anti-abuse system
+                 *     and may not be required for all requests.
+                 */
+                "x-datadome-clientid"?: components["parameters"]["DataDomeClientId"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -166,12 +446,30 @@ export interface operations {
                 limit?: components["parameters"]["Limit"];
                 offset?: components["parameters"]["Offset"];
                 linked_partitioning?: components["parameters"]["LinkedPartitioning"];
+                /** @description SoundCloud web-client application version. */
                 app_version?: components["parameters"]["AppVersion"];
                 app_locale?: components["parameters"]["AppLocale"];
-                /** @description Historical web-client authentication parameter; current authentication behavior should be verified against live network traffic. */
+                /**
+                 * @description Historical web-client authentication parameter.
+                 *     Current web-client traffic primarily uses the Authorization header.
+                 */
                 oauth_token?: components["parameters"]["OAuthToken"];
             };
-            header?: never;
+            header?: {
+                /**
+                 * @description Authentication header used by the SoundCloud web client.
+                 *
+                 *     Example format:
+                 *     `OAuth <token>`
+                 */
+                Authorization?: components["parameters"]["Authorization"];
+                /**
+                 * @description DataDome client identifier sent by the SoundCloud web client.
+                 *     This appears to be related to SoundCloud's anti-abuse system
+                 *     and may not be required for all requests.
+                 */
+                "x-datadome-clientid"?: components["parameters"]["DataDomeClientId"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -188,18 +486,50 @@ export interface operations {
                     };
                 };
             };
+            /** @description Authentication required or invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     addPlayHistory: {
         parameters: {
             query: {
                 client_id: components["parameters"]["ClientId"];
+                /** @description SoundCloud web-client application version. */
                 app_version?: components["parameters"]["AppVersion"];
                 app_locale?: components["parameters"]["AppLocale"];
-                /** @description Historical web-client authentication parameter; current authentication behavior should be verified against live network traffic. */
+                /**
+                 * @description Historical web-client authentication parameter.
+                 *     Current web-client traffic primarily uses the Authorization header.
+                 */
                 oauth_token?: components["parameters"]["OAuthToken"];
             };
-            header?: never;
+            header?: {
+                /**
+                 * @description Authentication header used by the SoundCloud web client.
+                 *
+                 *     Example format:
+                 *     `OAuth <token>`
+                 */
+                Authorization?: components["parameters"]["Authorization"];
+                /**
+                 * @description DataDome client identifier sent by the SoundCloud web client.
+                 *     This appears to be related to SoundCloud's anti-abuse system
+                 *     and may not be required for all requests.
+                 */
+                "x-datadome-clientid"?: components["parameters"]["DataDomeClientId"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -232,18 +562,50 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Authentication required or invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     clearPlayHistory: {
         parameters: {
             query: {
                 client_id: components["parameters"]["ClientId"];
+                /** @description SoundCloud web-client application version. */
                 app_version?: components["parameters"]["AppVersion"];
                 app_locale?: components["parameters"]["AppLocale"];
-                /** @description Historical web-client authentication parameter; current authentication behavior should be verified against live network traffic. */
+                /**
+                 * @description Historical web-client authentication parameter.
+                 *     Current web-client traffic primarily uses the Authorization header.
+                 */
                 oauth_token?: components["parameters"]["OAuthToken"];
             };
-            header?: never;
+            header?: {
+                /**
+                 * @description Authentication header used by the SoundCloud web client.
+                 *
+                 *     Example format:
+                 *     `OAuth <token>`
+                 */
+                Authorization?: components["parameters"]["Authorization"];
+                /**
+                 * @description DataDome client identifier sent by the SoundCloud web client.
+                 *     This appears to be related to SoundCloud's anti-abuse system
+                 *     and may not be required for all requests.
+                 */
+                "x-datadome-clientid"?: components["parameters"]["DataDomeClientId"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -258,6 +620,20 @@ export interface operations {
             };
             /** @description Cleared */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required or invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
