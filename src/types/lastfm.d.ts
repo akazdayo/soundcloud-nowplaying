@@ -69,7 +69,7 @@ export interface components {
             [key: string]: string;
         };
         LastFmCorrectableText: {
-            "#text": string;
+            "#text"?: string;
             /** @enum {string} */
             corrected: "0" | "1";
         };
@@ -88,8 +88,8 @@ export interface components {
         LastFmScrobblesResponse: {
             scrobbles: {
                 "@attr": {
-                    accepted: string;
-                    ignored: string;
+                    accepted: number;
+                    ignored: number;
                 };
                 scrobble: components["schemas"]["LastFmScrobble"] | components["schemas"]["LastFmScrobble"][];
             };

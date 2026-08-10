@@ -183,7 +183,7 @@ components:
     LastFmCorrectableText:
       type: object
       additionalProperties: false
-      required: ['#text', corrected]
+      required: [corrected]
       properties:
         '#text':
           type: string
@@ -235,9 +235,11 @@ components:
               required: [accepted, ignored]
               properties:
                 accepted:
-                  type: string
+                  type: integer
+                  minimum: 0
                 ignored:
-                  type: string
+                  type: integer
+                  minimum: 0
             scrobble:
               oneOf:
                 - $ref: '#/components/schemas/LastFmScrobble'

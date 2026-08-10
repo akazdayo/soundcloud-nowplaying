@@ -56,8 +56,8 @@ function isScrobblesResponse(value: unknown): value is LastFmScrobblesResponse {
 	const scrobble = value.scrobbles.scrobble;
 	return (
 		isJsonObject(attributes) &&
-		typeof attributes.accepted === "string" &&
-		typeof attributes.ignored === "string" &&
+		typeof attributes.accepted === "number" &&
+		typeof attributes.ignored === "number" &&
 		(Array.isArray(scrobble) || isJsonObject(scrobble))
 	);
 }
