@@ -1,19 +1,17 @@
 openapi: 3.1.0
 info:
-  title: Last.fm Scrobble API
-  version: 1.0.0
+  title: Last.fm Web Services API
+  version: 2.0.0
   description: |
-    Last.fm の track.scrobble と user.getRecentTracks を扱いやすい JSON API に
-    正規化したラッパー仕様です。
-
-    サーバーは `LASTFM_API_KEY` と `LASTFM_API_SECRET` を安全な環境変数として保持し、
-    Scrobble 送信時だけ利用者の Last.fm session key を受け取ります。
+    このアプリケーションが利用する Last.fm Web Services API の仕様です。
+    `track.scrobble` と `user.getRecentTracks` は同じ `/2.0/` エンドポイントを
+    method パラメータで切り替えて呼び出します。
 externalDocs:
   description: Last.fm API documentation
   url: https://www.last.fm/api
 servers:
-  - url: /
-    description: APIドキュメントを配信しているオリジン
+  - url: https://ws.audioscrobbler.com/2.0
+    description: Last.fm Web Services API
 tags:
   - name: Scrobbles
     description: Last.fmへの再生情報送信
@@ -21,76 +19,47 @@ tags:
     description: Last.fmからの再生履歴取得
 
 paths:
-  /scrobbles:
-    post:
-      operationId: createScrobbles
-      tags: [Scrobbles]
-      summary: 再生情報をScrobbleする
-      description: |
-        1〜50件を Last.fm の `track.scrobble` に送信します。
-        Last.fm API署名はサーバー側で生成します。
-      security:
-        - lastFmSession: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateScrobblesRequest'
-            examples:
-              single:
-                summary: 1曲を送信
-                value:
-                  scrobbles:
-                    - artist: ZUTOMAYO
-                      track: Study Me
-                      album: Gusare
-                      timestamp: 1723082400
-                      duration: 242
-      responses:
-        '200':
-          description: Last.fmが各Scrobbleを処理した結果
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CreateScrobblesResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-        '502':
-          $ref: '#/components/responses/UpstreamError'
-
-  /users/{username}/recent-tracks:
+  /:
     get:
       operationId: getRecentTracks
       tags: [History]
-      security: []
       summary: Last.fmの再生履歴を取得する
-      description: |
-        Last.fm の `user.getRecentTracks` を呼び出します。現在再生中の曲は
-        `nowPlaying: true` となり、`playedAt` を持たない場合があります。
+      description: Last.fm の `user.getRecentTracks` を呼び出します。
       parameters:
-        - name: username
-          in: path
+        - name: method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [user.getRecentTracks]
+        - name: user
+          in: query
           required: true
           description: Last.fmユーザー名
           schema:
             type: string
             minLength: 1
           example: rj
+        - name: api_key
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [json]
         - name: page
           in: query
-          description: 1始まりのページ番号
           schema:
             type: integer
             minimum: 1
             default: 1
         - name: limit
           in: query
-          description: 1ページの件数
           schema:
             type: integer
             minimum: 1
@@ -110,51 +79,48 @@ paths:
             minimum: 0
         - name: extended
           in: query
-          description: アーティスト詳細とLoved状態を含める
+          description: アーティスト詳細とLoved状態を含める場合は1
           schema:
-            type: boolean
-            default: false
+            type: integer
+            enum: [0, 1]
+            default: 0
       responses:
         '200':
-          description: ページングされた再生履歴
+          description: 再生履歴、またはLast.fm APIエラー
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RecentTracksResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          description: ユーザーが存在しない
+                oneOf:
+                  - $ref: '#/components/schemas/LastFmRecentTracksResponse'
+                  - $ref: '#/components/schemas/LastFmErrorResponse'
+
+    post:
+      operationId: scrobble
+      tags: [Scrobbles]
+      summary: 再生情報をScrobbleする
+      description: |
+        Last.fm の `track.scrobble` を呼び出します。1〜50曲を送信できます。
+        曲の各フィールドは `artist[0]`、`track[0]`、`timestamp[0]` のような
+        添字付きフォームパラメータに展開します。`format` と `callback` を除く
+        全パラメータをASCII順に連結し、shared secretを付加してMD5署名します。
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LastFmScrobbleForm'
+      responses:
+        '200':
+          description: Scrobble結果、またはLast.fm APIエラー
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-        '502':
-          $ref: '#/components/responses/UpstreamError'
+                oneOf:
+                  - $ref: '#/components/schemas/LastFmScrobblesResponse'
+                  - $ref: '#/components/schemas/LastFmErrorResponse'
 
 components:
-  securitySchemes:
-    lastFmSession:
-      type: apiKey
-      in: header
-      name: X-Lastfm-Session-Key
-      description: Last.fmの認可済みsession key。API secretではありません。
-
   schemas:
-    CreateScrobblesRequest:
-      type: object
-      additionalProperties: false
-      required: [scrobbles]
-      properties:
-        scrobbles:
-          type: array
-          minItems: 1
-          maxItems: 50
-          items:
-            $ref: '#/components/schemas/ScrobbleInput'
-
     ScrobbleInput:
       type: object
       additionalProperties: false
@@ -169,7 +135,7 @@ components:
         timestamp:
           type: integer
           minimum: 0
-          description: 再生開始時刻（UNIX時刻、秒、UTC）
+          description: 再生開始時刻（UTCのUNIX時刻、秒）
         album:
           type: string
         albumArtist:
@@ -181,167 +147,238 @@ components:
           type: integer
           minimum: 1
           description: 曲の長さ（秒）
+        trackNumber:
+          type: integer
+          minimum: 1
         chosenByUser:
           type: boolean
           default: true
           description: 利用者が曲を選択したか
 
-    CreateScrobblesResponse:
+    LastFmScrobbleForm:
       type: object
-      required: [accepted, ignored, scrobbles]
+      description: |
+        認証パラメータと添字付きScrobbleパラメータを含むフォームです。
+        添字付きフィールドはすべて文字列として送信します。
+      required: [api_key, api_sig, method, sk, format]
       properties:
-        accepted:
-          type: integer
-          minimum: 0
-        ignored:
-          type: integer
-          minimum: 0
-        scrobbles:
-          type: array
-          items:
-            $ref: '#/components/schemas/ScrobbleResult'
+        api_key:
+          type: string
+          minLength: 1
+        api_sig:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        method:
+          type: string
+          enum: [track.scrobble]
+        sk:
+          type: string
+          minLength: 1
+        format:
+          type: string
+          enum: [json]
+      additionalProperties:
+        type: string
 
-    ScrobbleResult:
+    LastFmCorrectableText:
       type: object
-      required: [artist, track, accepted]
+      additionalProperties: false
+      required: ['#text', corrected]
       properties:
-        artist:
+        '#text':
           type: string
-        track:
-          type: string
-        album:
-          type: string
-        timestamp:
-          type: integer
-        accepted:
-          type: boolean
         corrected:
-          type: boolean
-          description: Last.fmによって表記が補正されたか
-        ignoredCode:
-          type: integer
-          description: Last.fmのignoredMessage code。0は受理を示す。
-        ignoredMessage:
+          type: string
+          enum: ['0', '1']
+
+    LastFmIgnoredMessage:
+      type: object
+      additionalProperties: false
+      required: ['#text', code]
+      properties:
+        '#text':
+          type: string
+        code:
           type: string
 
-    RecentTracksResponse:
+    LastFmScrobble:
       type: object
-      required: [username, page, perPage, totalPages, total, tracks]
+      additionalProperties: false
+      required: [track, artist, album, albumArtist, timestamp, ignoredMessage]
       properties:
-        username:
-          type: string
-        page:
-          type: integer
-          minimum: 1
-        perPage:
-          type: integer
-          minimum: 1
-        totalPages:
-          type: integer
-          minimum: 0
-        total:
-          type: integer
-          minimum: 0
-        tracks:
-          type: array
-          items:
-            $ref: '#/components/schemas/RecentTrack'
-
-    RecentTrack:
-      type: object
-      required: [artist, track, nowPlaying, url, images]
-      properties:
-        artist:
-          type: string
-        artistMbid:
-          type: string
         track:
-          type: string
-        mbid:
-          type: string
+          $ref: '#/components/schemas/LastFmCorrectableText'
+        artist:
+          $ref: '#/components/schemas/LastFmCorrectableText'
         album:
+          $ref: '#/components/schemas/LastFmCorrectableText'
+        albumArtist:
+          $ref: '#/components/schemas/LastFmCorrectableText'
+        timestamp:
           type: string
-        albumMbid:
-          type: string
-        url:
-          type: string
-          format: uri
-        playedAt:
-          type: string
-          format: date-time
-          description: UTCのISO 8601。現在再生中の場合は省略されることがある。
-        playedAtUnix:
-          type: integer
-          minimum: 0
-        nowPlaying:
-          type: boolean
-        loved:
-          type: boolean
-          description: extended=trueの場合に取得できる
-        images:
-          type: array
-          items:
-            $ref: '#/components/schemas/Image'
+        ignoredMessage:
+          $ref: '#/components/schemas/LastFmIgnoredMessage'
 
-    Image:
+    LastFmScrobblesResponse:
       type: object
-      required: [size, url]
+      additionalProperties: false
+      required: [scrobbles]
+      properties:
+        scrobbles:
+          type: object
+          additionalProperties: false
+          required: ['@attr', scrobble]
+          properties:
+            '@attr':
+              type: object
+              additionalProperties: false
+              required: [accepted, ignored]
+              properties:
+                accepted:
+                  type: string
+                ignored:
+                  type: string
+            scrobble:
+              oneOf:
+                - $ref: '#/components/schemas/LastFmScrobble'
+                - type: array
+                  items:
+                    $ref: '#/components/schemas/LastFmScrobble'
+
+    LastFmErrorResponse:
+      type: object
+      additionalProperties: true
+      required: [error, message]
+      properties:
+        error:
+          type: integer
+        message:
+          type: string
+        links:
+          type: array
+          items: {}
+
+    LastFmImage:
+      type: object
+      additionalProperties: false
+      required: [size, '#text']
       properties:
         size:
           type: string
           enum: [small, medium, large, extralarge, mega]
+        '#text':
+          type: string
+
+    LastFmBasicArtist:
+      type: object
+      additionalProperties: false
+      required: ['#text', mbid]
+      properties:
+        '#text':
+          type: string
+        mbid:
+          type: string
+
+    LastFmExtendedArtist:
+      type: object
+      additionalProperties: true
+      required: [name, mbid, url, image]
+      properties:
+        name:
+          type: string
+        mbid:
+          type: string
         url:
           type: string
           format: uri
+        image:
+          type: array
+          items:
+            $ref: '#/components/schemas/LastFmImage'
 
-    Error:
+    LastFmAlbum:
       type: object
       additionalProperties: false
-      required: [error]
+      required: ['#text', mbid]
       properties:
-        error:
+        '#text':
+          type: string
+        mbid:
+          type: string
+
+    LastFmDate:
+      type: object
+      additionalProperties: false
+      required: ['#text', uts]
+      properties:
+        '#text':
+          type: string
+        uts:
+          type: string
+
+    LastFmRecentTrack:
+      type: object
+      additionalProperties: false
+      required: [name, mbid, url, streamable, artist, album, image]
+      properties:
+        name:
+          type: string
+        mbid:
+          type: string
+        url:
+          type: string
+          format: uri
+        streamable:
+          type: string
+        loved:
+          type: string
+        artist:
+          oneOf:
+            - $ref: '#/components/schemas/LastFmBasicArtist'
+            - $ref: '#/components/schemas/LastFmExtendedArtist'
+        album:
+          $ref: '#/components/schemas/LastFmAlbum'
+        image:
+          type: array
+          items:
+            $ref: '#/components/schemas/LastFmImage'
+        date:
+          $ref: '#/components/schemas/LastFmDate'
+        '@attr':
           type: object
           additionalProperties: false
-          required: [code, message]
+          required: [nowplaying]
           properties:
-            code:
+            nowplaying:
               type: string
-              examples: [INVALID_REQUEST]
-            message:
-              type: string
-            upstreamCode:
-              type: integer
-              description: Last.fmが返したエラーコード
-            requestId:
-              type: string
+              enum: ['true']
 
-  responses:
-    BadRequest:
-      description: リクエストが不正
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    Unauthorized:
-      description: session keyがない、無効、または期限切れ
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    RateLimited:
-      description: リクエスト上限を超過
-      headers:
-        Retry-After:
-          schema:
-            type: integer
-          description: 再試行までの秒数
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    UpstreamError:
-      description: Last.fm APIへの接続または処理に失敗
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
+    LastFmRecentTracksResponse:
+      type: object
+      additionalProperties: false
+      required: [recenttracks]
+      properties:
+        recenttracks:
+          type: object
+          additionalProperties: false
+          required: [track, '@attr']
+          properties:
+            track:
+              type: array
+              items:
+                $ref: '#/components/schemas/LastFmRecentTrack'
+            '@attr':
+              type: object
+              additionalProperties: false
+              required: [user, page, perPage, totalPages, total]
+              properties:
+                user:
+                  type: string
+                page:
+                  type: string
+                perPage:
+                  type: string
+                totalPages:
+                  type: string
+                total:
+                  type: string

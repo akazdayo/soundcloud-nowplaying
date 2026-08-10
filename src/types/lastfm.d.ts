@@ -4,28 +4,7 @@
  */
 
 export interface paths {
-    "/scrobbles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 再生情報をScrobbleする
-         * @description 1〜50件を Last.fm の `track.scrobble` に送信します。
-         *     Last.fm API署名はサーバー側で生成します。
-         */
-        post: operations["createScrobbles"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/users/{username}/recent-tracks": {
+    "/": {
         parameters: {
             query?: never;
             header?: never;
@@ -34,12 +13,18 @@ export interface paths {
         };
         /**
          * Last.fmの再生履歴を取得する
-         * @description Last.fm の `user.getRecentTracks` を呼び出します。現在再生中の曲は
-         *     `nowPlaying: true` となり、`playedAt` を持たない場合があります。
+         * @description Last.fm の `user.getRecentTracks` を呼び出します。
          */
         get: operations["getRecentTracks"];
         put?: never;
-        post?: never;
+        /**
+         * 再生情報をScrobbleする
+         * @description Last.fm の `track.scrobble` を呼び出します。1〜50曲を送信できます。
+         *     曲の各フィールドは `artist[0]`、`track[0]`、`timestamp[0]` のような
+         *     添字付きフォームパラメータに展開します。`format` と `callback` を除く
+         *     全パラメータをASCII順に連結し、shared secretを付加してMD5署名します。
+         */
+        post: operations["scrobble"];
         delete?: never;
         options?: never;
         head?: never;
@@ -50,13 +35,10 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        CreateScrobblesRequest: {
-            scrobbles: components["schemas"]["ScrobbleInput"][];
-        };
         ScrobbleInput: {
             artist: string;
             track: string;
-            /** @description 再生開始時刻（UNIX時刻、秒、UTC） */
+            /** @description 再生開始時刻（UTCのUNIX時刻、秒） */
             timestamp: number;
             album?: string;
             albumArtist?: string;
@@ -64,122 +46,176 @@ export interface components {
             mbid?: string;
             /** @description 曲の長さ（秒） */
             duration?: number;
+            trackNumber?: number;
             /**
              * @description 利用者が曲を選択したか
              * @default true
              */
-            chosenByUser: boolean;
+            chosenByUser?: boolean;
         };
-        CreateScrobblesResponse: {
-            accepted: number;
-            ignored: number;
-            scrobbles: components["schemas"]["ScrobbleResult"][];
+        /**
+         * @description 認証パラメータと添字付きScrobbleパラメータを含むフォームです。
+         *     添字付きフィールドはすべて文字列として送信します。
+         */
+        LastFmScrobbleForm: {
+            api_key: string;
+            api_sig: string;
+            /** @enum {string} */
+            method: "track.scrobble";
+            sk: string;
+            /** @enum {string} */
+            format: "json";
+        } & {
+            [key: string]: string;
         };
-        ScrobbleResult: {
-            artist: string;
-            track: string;
-            album?: string;
-            timestamp?: number;
-            accepted: boolean;
-            /** @description Last.fmによって表記が補正されたか */
-            corrected?: boolean;
-            /** @description Last.fmのignoredMessage code。0は受理を示す。 */
-            ignoredCode?: number;
-            ignoredMessage?: string;
+        LastFmCorrectableText: {
+            "#text": string;
+            /** @enum {string} */
+            corrected: "0" | "1";
         };
-        RecentTracksResponse: {
-            username: string;
-            page: number;
-            perPage: number;
-            totalPages: number;
-            total: number;
-            tracks: components["schemas"]["RecentTrack"][];
+        LastFmIgnoredMessage: {
+            "#text": string;
+            code: string;
         };
-        RecentTrack: {
-            artist: string;
-            artistMbid?: string;
-            track: string;
-            mbid?: string;
-            album?: string;
-            albumMbid?: string;
-            /** Format: uri */
-            url: string;
-            /**
-             * Format: date-time
-             * @description UTCのISO 8601。現在再生中の場合は省略されることがある。
-             */
-            playedAt?: string;
-            playedAtUnix?: number;
-            nowPlaying: boolean;
-            /** @description extended=trueの場合に取得できる */
-            loved?: boolean;
-            images: components["schemas"]["Image"][];
+        LastFmScrobble: {
+            track: components["schemas"]["LastFmCorrectableText"];
+            artist: components["schemas"]["LastFmCorrectableText"];
+            album: components["schemas"]["LastFmCorrectableText"];
+            albumArtist: components["schemas"]["LastFmCorrectableText"];
+            timestamp: string;
+            ignoredMessage: components["schemas"]["LastFmIgnoredMessage"];
         };
-        Image: {
+        LastFmScrobblesResponse: {
+            scrobbles: {
+                "@attr": {
+                    accepted: string;
+                    ignored: string;
+                };
+                scrobble: components["schemas"]["LastFmScrobble"] | components["schemas"]["LastFmScrobble"][];
+            };
+        };
+        LastFmErrorResponse: {
+            error: number;
+            message: string;
+            links?: unknown[];
+        } & {
+            [key: string]: unknown;
+        };
+        LastFmImage: {
             /** @enum {string} */
             size: "small" | "medium" | "large" | "extralarge" | "mega";
+            "#text": string;
+        };
+        LastFmBasicArtist: {
+            "#text": string;
+            mbid: string;
+        };
+        LastFmExtendedArtist: {
+            name: string;
+            mbid: string;
             /** Format: uri */
             url: string;
+            image: components["schemas"]["LastFmImage"][];
+        } & {
+            [key: string]: unknown;
         };
-        Error: {
-            error: {
-                /** @example INVALID_REQUEST */
-                code: string;
-                message: string;
-                /** @description Last.fmが返したエラーコード */
-                upstreamCode?: number;
-                requestId?: string;
-            };
+        LastFmAlbum: {
+            "#text": string;
+            mbid: string;
         };
-    };
-    responses: {
-        /** @description リクエストが不正 */
-        BadRequest: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
+        LastFmDate: {
+            "#text": string;
+            uts: string;
         };
-        /** @description session keyがない、無効、または期限切れ */
-        Unauthorized: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
+        LastFmRecentTrack: {
+            name: string;
+            mbid: string;
+            /** Format: uri */
+            url: string;
+            streamable: string;
+            loved?: string;
+            artist: components["schemas"]["LastFmBasicArtist"] | components["schemas"]["LastFmExtendedArtist"];
+            album: components["schemas"]["LastFmAlbum"];
+            image: components["schemas"]["LastFmImage"][];
+            date?: components["schemas"]["LastFmDate"];
+            "@attr"?: {
+                /** @enum {string} */
+                nowplaying: "true";
             };
         };
-        /** @description リクエスト上限を超過 */
-        RateLimited: {
-            headers: {
-                /** @description 再試行までの秒数 */
-                "Retry-After"?: number;
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Last.fm APIへの接続または処理に失敗 */
-        UpstreamError: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
+        LastFmRecentTracksResponse: {
+            recenttracks: {
+                track: components["schemas"]["LastFmRecentTrack"][];
+                "@attr": {
+                    user: string;
+                    page: string;
+                    perPage: string;
+                    totalPages: string;
+                    total: string;
+                };
             };
         };
     };
+    responses: never;
     parameters: never;
     requestBodies: never;
     headers: never;
     pathItems: never;
 }
+export type ScrobbleInput = components['schemas']['ScrobbleInput'];
+export type LastFmScrobbleForm = components['schemas']['LastFmScrobbleForm'];
+export type LastFmCorrectableText = components['schemas']['LastFmCorrectableText'];
+export type LastFmIgnoredMessage = components['schemas']['LastFmIgnoredMessage'];
+export type LastFmScrobble = components['schemas']['LastFmScrobble'];
+export type LastFmScrobblesResponse = components['schemas']['LastFmScrobblesResponse'];
+export type LastFmErrorResponse = components['schemas']['LastFmErrorResponse'];
+export type LastFmImage = components['schemas']['LastFmImage'];
+export type LastFmBasicArtist = components['schemas']['LastFmBasicArtist'];
+export type LastFmExtendedArtist = components['schemas']['LastFmExtendedArtist'];
+export type LastFmAlbum = components['schemas']['LastFmAlbum'];
+export type LastFmDate = components['schemas']['LastFmDate'];
+export type LastFmRecentTrack = components['schemas']['LastFmRecentTrack'];
+export type LastFmRecentTracksResponse = components['schemas']['LastFmRecentTracksResponse'];
 export type $defs = Record<string, never>;
 export interface operations {
-    createScrobbles: {
+    getRecentTracks: {
+        parameters: {
+            query: {
+                method: "user.getRecentTracks";
+                /**
+                 * @description Last.fmユーザー名
+                 * @example rj
+                 */
+                user: string;
+                api_key: string;
+                format: "json";
+                page?: number;
+                limit?: number;
+                /** @description このUNIX時刻（秒）以降のScrobble */
+                from?: number;
+                /** @description このUNIX時刻（秒）以前のScrobble */
+                to?: number;
+                /** @description アーティスト詳細とLoved状態を含める場合は1 */
+                extended?: 0 | 1;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 再生履歴、またはLast.fm APIエラー */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LastFmRecentTracksResponse"] | components["schemas"]["LastFmErrorResponse"];
+                };
+            };
+        };
+    };
+    scrobble: {
         parameters: {
             query?: never;
             header?: never;
@@ -188,72 +224,19 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateScrobblesRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LastFmScrobbleForm"];
             };
         };
         responses: {
-            /** @description Last.fmが各Scrobbleを処理した結果 */
+            /** @description Scrobble結果、またはLast.fm APIエラー */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CreateScrobblesResponse"];
+                    "application/json": components["schemas"]["LastFmScrobblesResponse"] | components["schemas"]["LastFmErrorResponse"];
                 };
             };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            429: components["responses"]["RateLimited"];
-            502: components["responses"]["UpstreamError"];
-        };
-    };
-    getRecentTracks: {
-        parameters: {
-            query?: {
-                /** @description 1始まりのページ番号 */
-                page?: number;
-                /** @description 1ページの件数 */
-                limit?: number;
-                /** @description このUNIX時刻（秒）以降のScrobble */
-                from?: number;
-                /** @description このUNIX時刻（秒）以前のScrobble */
-                to?: number;
-                /** @description アーティスト詳細とLoved状態を含める */
-                extended?: boolean;
-            };
-            header?: never;
-            path: {
-                /**
-                 * @description Last.fmユーザー名
-                 * @example rj
-                 */
-                username: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description ページングされた再生履歴 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RecentTracksResponse"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            /** @description ユーザーが存在しない */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            429: components["responses"]["RateLimited"];
-            502: components["responses"]["UpstreamError"];
         };
     };
 }
