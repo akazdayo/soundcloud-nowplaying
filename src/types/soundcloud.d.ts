@@ -64,8 +64,21 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         PlayHistoryResponse: {
-            collection?: components["schemas"]["Track"][];
-            next_href?: string | null;
+            collection: components["schemas"]["PlayHistoryItem"][];
+            next_href: string | null;
+            query_urn: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        PlayHistoryItem: {
+            /**
+             * Format: int64
+             * @description Unix timestamp in milliseconds when the track was played.
+             */
+            played_at: number;
+            /** Format: int64 */
+            track_id: number;
+            track: components["schemas"]["Track"];
         } & {
             [key: string]: unknown;
         };

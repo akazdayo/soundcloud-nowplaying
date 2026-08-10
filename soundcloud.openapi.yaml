@@ -142,13 +142,36 @@ components:
   schemas:
     PlayHistoryResponse:
       type: object
+      required:
+        - collection
+        - next_href
+        - query_urn
       properties:
         collection:
           type: array
           items:
-            $ref: '#/components/schemas/Track'
+            $ref: '#/components/schemas/PlayHistoryItem'
         next_href:
           type: [string, 'null']
+        query_urn:
+          type: [string, 'null']
+      additionalProperties: true
+    PlayHistoryItem:
+      type: object
+      required:
+        - played_at
+        - track_id
+        - track
+      properties:
+        played_at:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds when the track was played.
+        track_id:
+          type: integer
+          format: int64
+        track:
+          $ref: '#/components/schemas/Track'
       additionalProperties: true
     Track:
       type: object
@@ -173,4 +196,3 @@ components:
           type: object
           additionalProperties: true
       additionalProperties: true
-

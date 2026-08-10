@@ -5,6 +5,8 @@ const client = createClient<paths>({ baseUrl: "https://api-v2.soundcloud.com" })
 const OAUTH_TOKEN = process.env.SOUNDCLOUD_OAUTH_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 
+export type HistoriesResponse = paths["/me/play-history/tracks"]["get"]["responses"][200]["content"]["application/json"];
+
 export const getHistories = async () => {
   const { data, error } = await client.GET(
     "/me/play-history/tracks",
@@ -18,8 +20,8 @@ export const getHistories = async () => {
       },
     },
   );
-  if (error !== undefined) {
-    throw `get history error, ${error}`;
+  if (error !== undefined || data === undefined) {
+    throw new Error(`get history error: ${JSON.stringify(error)}`);
   }
   return data;
 };

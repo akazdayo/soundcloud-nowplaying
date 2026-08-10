@@ -2,9 +2,11 @@
 	"name": "ancient-sea-0d93",
 	"version": "0.0.0",
 	"private": true,
+	"type": "module",
 	"scripts": {
 		"deploy": "wrangler deploy",
 		"dev": "wrangler dev",
+		"now-playing": "node src/getNowPlaying.ts",
 		"start": "wrangler dev",
 		"test": "vitest",
 		"cf-typegen": "wrangler types"
