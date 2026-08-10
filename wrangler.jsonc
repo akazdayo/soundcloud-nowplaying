@@ -17,7 +17,7 @@
 	"secrets": {
 		"required": [
 			"SOUNDCLOUD_OAUTH_TOKEN",
-			"CLIENT_ID",
+			"SOUNDCLOUD_CLIENT_ID",
 			"LASTFM_API_KEY",
 			"LASTFM_SESSION_KEY",
 			"LASTFM_SHARED_SECRET"
