@@ -13,9 +13,7 @@ export default {
 		env: Env,
 		ctx: ExecutionContext,
 	) {
-    console.log("hi");
 		const storedLastPlayedAt = await env.lastPlayed.get(KV_KEY);
-    console.log(storedLastPlayedAt);
 		const lastPlayedAt =
 			storedLastPlayedAt === null ? -1 : Number(storedLastPlayedAt);
 		const history = await getHistories();
