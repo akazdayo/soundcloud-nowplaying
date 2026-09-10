@@ -16,7 +16,7 @@
 		"@types/node": "^26.1.2",
 		"openapi-typescript": "^7.13.0",
 		"typescript": "^5.5.2",
-		"vitest": "~3.2.0",
+		"vitest": "~4.1.11",
 		"wrangler": "^4.119.0"
 	},
 	"dependencies": {
